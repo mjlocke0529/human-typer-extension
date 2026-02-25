@@ -18,6 +18,10 @@ const progressBar = document.getElementById('progressBar');
 const progressFill = document.getElementById('progressFill');
 const clipboardBtn = document.getElementById('clipboardBtn');
 
+// Elements - upgrade bar
+const upgradeBar = document.getElementById('upgradeBar');
+const upgradeLink = document.getElementById('upgradeLink');
+
 // Load saved settings and pro status
 chrome.storage.local.get(['minDelay', 'maxDelay', 'typos', 'isPro'], (result) => {
   if (result.minDelay) minDelayEl.value = result.minDelay;
@@ -27,6 +31,7 @@ chrome.storage.local.get(['minDelay', 'maxDelay', 'typos', 'isPro'], (result) =>
     isPro = true;
     const proStatus = document.getElementById('proStatus');
     if (proStatus) proStatus.style.display = 'block';
+    if (upgradeBar) upgradeBar.style.display = 'none';
     updateWordCounter();
   }
   updatePresetHighlight();
@@ -78,21 +83,33 @@ function checkPaywall() {
   return true;
 }
 
-// Upgrade button
+// Upgrade handler (shared by upgradeBtn and upgradeLink)
+function handleUpgrade() {
+  isPro = true;
+  chrome.storage.local.set({ isPro: true });
+
+  const paywall = document.getElementById('paywall');
+  const proStatus = document.getElementById('proStatus');
+  if (paywall) paywall.style.display = 'none';
+  if (proStatus) proStatus.style.display = 'block';
+  if (upgradeBar) upgradeBar.style.display = 'none';
+
+  updateWordCounter();
+  statusEl.className = 'status success';
+  statusEl.textContent = '⚡ Upgraded to Pro! Unlimited words unlocked.';
+}
+
+// Upgrade button (paywall modal)
 const upgradeBtn = document.getElementById('upgradeBtn');
 if (upgradeBtn) {
-  upgradeBtn.addEventListener('click', () => {
-    isPro = true;
-    chrome.storage.local.set({ isPro: true });
-    
-    const paywall = document.getElementById('paywall');
-    const proStatus = document.getElementById('proStatus');
-    if (paywall) paywall.style.display = 'none';
-    if (proStatus) proStatus.style.display = 'block';
-    
-    updateWordCounter();
-    statusEl.className = 'status success';
-    statusEl.textContent = '⚡ Upgraded to Pro! Unlimited words unlocked.';
+  upgradeBtn.addEventListener('click', handleUpgrade);
+}
+
+// Upgrade link (bottom bar)
+if (upgradeLink) {
+  upgradeLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    handleUpgrade();
   });
 }
 
