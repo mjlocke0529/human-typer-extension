@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      width: 350px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #fff;
+      margin: 0;
+    }
+    h1 {
+      font-size: 18px;
+      margin: 0 0 12px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    h1 span {
+      font-size: 24px;
+    }
+    textarea {
+      width: 100%;
+      height: 150px;
+      padding: 12px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #16213e;
+      color: #fff;
+      font-size: 14px;
+      resize: vertical;
+      margin-bottom: 12px;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: #5956e9;
+    }
+    textarea::placeholder {
+      color: #666;
+    }
+    .settings {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .setting {
+      flex: 1;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 4px;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #16213e;
+      color: #fff;
+      font-size: 14px;
+    }
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #5956e9;
+    }
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: #aaa;
+    }
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #5956e9;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #5956e9;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #4845c7;
+    }
+    button:disabled {
+      background: #333;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      display: none;
+    }
+    .status.success {
+      display: block;
+      background: #064e3b;
+      color: #6ee7b7;
+    }
+    .status.error {
+      display: block;
+      background: #7f1d1d;
+      color: #fca5a5;
+    }
+    .status.typing {
+      display: block;
+      background: #1e3a5f;
+      color: #93c5fd;
+    }
+    .help {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #666;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <h1><span>⌨️</span> Human Typer</h1>
+  
+  <textarea id="text" placeholder="Paste your text here..."></textarea>
+  
+  <div class="settings">
+    <div class="setting">
+      <label>Min delay (ms)</label>
+      <input type="number" id="minDelay" value="30" min="10" max="500">
+    </div>
+    <div class="setting">
+      <label>Max delay (ms)</label>
+      <input type="number" id="maxDelay" value="120" min="20" max="1000">
+    </div>
+  </div>
+  
+  <div class="checkbox-row">
+    <input type="checkbox" id="typos" checked>
+    <label for="typos" style="margin: 0; color: #aaa;">Add occasional typos (more human)</label>
+  </div>
+  
+  <button id="startBtn">Start Typing</button>
+  
+  <div id="status" class="status"></div>
+  
+  <p class="help">
+    💡 Click on an input field first, then click "Start Typing". The text will be typed character by character with realistic timing.
+  </p>
+
+  <script src="popup.js"></script>
+</body>
+</html>
