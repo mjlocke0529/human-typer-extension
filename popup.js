@@ -1,6 +1,8 @@
 // State
 let isTyping = false;
 let isPaused = false;
+let isPro = false;
+const WORD_LIMIT = 90;
 
 // Elements
 const textEl = document.getElementById('text');
@@ -16,13 +18,83 @@ const progressBar = document.getElementById('progressBar');
 const progressFill = document.getElementById('progressFill');
 const clipboardBtn = document.getElementById('clipboardBtn');
 
-// Load saved settings
-chrome.storage.local.get(['minDelay', 'maxDelay', 'typos'], (result) => {
+// Load saved settings and pro status
+chrome.storage.local.get(['minDelay', 'maxDelay', 'typos', 'isPro'], (result) => {
   if (result.minDelay) minDelayEl.value = result.minDelay;
   if (result.maxDelay) maxDelayEl.value = result.maxDelay;
   if (result.typos !== undefined) typosEl.checked = result.typos;
+  if (result.isPro) {
+    isPro = true;
+    const proStatus = document.getElementById('proStatus');
+    if (proStatus) proStatus.style.display = 'block';
+    updateWordCounter();
+  }
   updatePresetHighlight();
 });
+
+// Word counting
+function countWords(text) {
+  return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+}
+
+function updateWordCounter() {
+  const wordCounter = document.getElementById('wordCounter');
+  if (!wordCounter) return;
+  
+  const words = countWords(textEl.value);
+  
+  if (isPro) {
+    wordCounter.textContent = `${words} words`;
+    wordCounter.className = 'word-counter';
+  } else {
+    wordCounter.textContent = `${words} / ${WORD_LIMIT} words`;
+    if (words > WORD_LIMIT) {
+      wordCounter.className = 'word-counter limit';
+    } else if (words > WORD_LIMIT * 0.8) {
+      wordCounter.className = 'word-counter warning';
+    } else {
+      wordCounter.className = 'word-counter';
+    }
+  }
+}
+
+// Update word count on text change
+textEl.addEventListener('input', updateWordCounter);
+
+// Paywall check
+function checkPaywall() {
+  if (isPro) return true;
+  
+  const words = countWords(textEl.value);
+  if (words > WORD_LIMIT) {
+    const paywall = document.getElementById('paywall');
+    const wordCountEl = document.getElementById('wordCount');
+    if (paywall && wordCountEl) {
+      wordCountEl.textContent = `Your text has ${words} words.`;
+      paywall.style.display = 'flex';
+    }
+    return false;
+  }
+  return true;
+}
+
+// Upgrade button
+const upgradeBtn = document.getElementById('upgradeBtn');
+if (upgradeBtn) {
+  upgradeBtn.addEventListener('click', () => {
+    isPro = true;
+    chrome.storage.local.set({ isPro: true });
+    
+    const paywall = document.getElementById('paywall');
+    const proStatus = document.getElementById('proStatus');
+    if (paywall) paywall.style.display = 'none';
+    if (proStatus) proStatus.style.display = 'block';
+    
+    updateWordCounter();
+    statusEl.className = 'status success';
+    statusEl.textContent = '⚡ Upgraded to Pro! Unlimited words unlocked.';
+  });
+}
 
 // Save settings when changed
 function saveSettings() {
@@ -63,6 +135,7 @@ clipboardBtn.addEventListener('click', async () => {
   try {
     const text = await navigator.clipboard.readText();
     textEl.value = text;
+    updateWordCounter();
     statusEl.className = 'status success';
     statusEl.textContent = `📋 Pasted ${text.length} characters from clipboard`;
   } catch (err) {
@@ -88,6 +161,7 @@ const generateBtn = document.getElementById('generateBtn');
 generateBtn.addEventListener('click', () => {
   const randomText = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
   textEl.value = randomText;
+  updateWordCounter();
   statusEl.className = 'status success';
   statusEl.textContent = `✨ Generated sample text (${randomText.length} chars)`;
 });
@@ -131,6 +205,7 @@ async function startTyping(fromClipboard = false) {
     try {
       text = await navigator.clipboard.readText();
       textEl.value = text;
+      updateWordCounter();
     } catch (err) {
       statusEl.className = 'status error';
       statusEl.textContent = 'Could not read clipboard.';
@@ -145,6 +220,11 @@ async function startTyping(fromClipboard = false) {
   if (!text.trim()) {
     statusEl.className = 'status error';
     statusEl.textContent = 'Please paste some text first!';
+    return;
+  }
+
+  // Check paywall
+  if (!checkPaywall()) {
     return;
   }
 
