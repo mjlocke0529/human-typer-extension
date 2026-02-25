@@ -1,10 +1,125 @@
-document.getElementById('startBtn').addEventListener('click', async () => {
-  const text = document.getElementById('text').value;
-  const minDelay = parseInt(document.getElementById('minDelay').value) || 30;
-  const maxDelay = parseInt(document.getElementById('maxDelay').value) || 120;
-  const addTypos = document.getElementById('typos').checked;
-  const statusEl = document.getElementById('status');
-  const btn = document.getElementById('startBtn');
+// State
+let isTyping = false;
+let isPaused = false;
+
+// Elements
+const textEl = document.getElementById('text');
+const minDelayEl = document.getElementById('minDelay');
+const maxDelayEl = document.getElementById('maxDelay');
+const typosEl = document.getElementById('typos');
+const statusEl = document.getElementById('status');
+const startBtn = document.getElementById('startBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const stopBtn = document.getElementById('stopBtn');
+const controlRow = document.getElementById('controlRow');
+const progressBar = document.getElementById('progressBar');
+const progressFill = document.getElementById('progressFill');
+const clipboardBtn = document.getElementById('clipboardBtn');
+
+// Load saved settings
+chrome.storage.local.get(['minDelay', 'maxDelay', 'typos'], (result) => {
+  if (result.minDelay) minDelayEl.value = result.minDelay;
+  if (result.maxDelay) maxDelayEl.value = result.maxDelay;
+  if (result.typos !== undefined) typosEl.checked = result.typos;
+  updatePresetHighlight();
+});
+
+// Save settings when changed
+function saveSettings() {
+  chrome.storage.local.set({
+    minDelay: parseInt(minDelayEl.value),
+    maxDelay: parseInt(maxDelayEl.value),
+    typos: typosEl.checked
+  });
+}
+
+minDelayEl.addEventListener('change', () => { saveSettings(); updatePresetHighlight(); });
+maxDelayEl.addEventListener('change', () => { saveSettings(); updatePresetHighlight(); });
+typosEl.addEventListener('change', saveSettings);
+
+// Preset buttons
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const min = btn.dataset.min;
+    const max = btn.dataset.max;
+    minDelayEl.value = min;
+    maxDelayEl.value = max;
+    saveSettings();
+    updatePresetHighlight();
+  });
+});
+
+function updatePresetHighlight() {
+  const min = minDelayEl.value;
+  const max = maxDelayEl.value;
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    const isMatch = btn.dataset.min === min && btn.dataset.max === max;
+    btn.classList.toggle('active', isMatch);
+  });
+}
+
+// Clipboard button
+clipboardBtn.addEventListener('click', async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    textEl.value = text;
+    statusEl.className = 'status success';
+    statusEl.textContent = `📋 Pasted ${text.length} characters from clipboard`;
+  } catch (err) {
+    statusEl.className = 'status error';
+    statusEl.textContent = 'Could not read clipboard. Try Ctrl+V instead.';
+  }
+});
+
+// Start button
+startBtn.addEventListener('click', () => startTyping());
+
+// Pause button
+pauseBtn.addEventListener('click', async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (isPaused) {
+    chrome.tabs.sendMessage(tab.id, { action: 'resume' });
+    isPaused = false;
+    pauseBtn.textContent = '⏸️ Pause';
+    pauseBtn.className = 'warning';
+    statusEl.className = 'status typing';
+    statusEl.textContent = 'Resumed typing...';
+  } else {
+    chrome.tabs.sendMessage(tab.id, { action: 'pause' });
+    isPaused = true;
+    pauseBtn.textContent = '▶️ Resume';
+    pauseBtn.className = 'secondary';
+    statusEl.className = 'status paused';
+    statusEl.textContent = 'Paused. Click Resume to continue.';
+  }
+});
+
+// Stop button
+stopBtn.addEventListener('click', async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  chrome.tabs.sendMessage(tab.id, { action: 'stop' });
+  resetUI();
+  statusEl.className = 'status error';
+  statusEl.textContent = 'Stopped.';
+});
+
+async function startTyping(fromClipboard = false) {
+  let text = textEl.value;
+  
+  if (fromClipboard) {
+    try {
+      text = await navigator.clipboard.readText();
+      textEl.value = text;
+    } catch (err) {
+      statusEl.className = 'status error';
+      statusEl.textContent = 'Could not read clipboard.';
+      return;
+    }
+  }
+
+  const minDelay = parseInt(minDelayEl.value) || 30;
+  const maxDelay = parseInt(maxDelayEl.value) || 120;
+  const addTypos = typosEl.checked;
 
   if (!text.trim()) {
     statusEl.className = 'status error';
@@ -12,183 +127,86 @@ document.getElementById('startBtn').addEventListener('click', async () => {
     return;
   }
 
-  // Disable button and show typing status
-  btn.disabled = true;
-  btn.textContent = 'Typing...';
+  // Update UI
+  isTyping = true;
+  isPaused = false;
+  startBtn.style.display = 'none';
+  controlRow.style.display = 'flex';
+  progressBar.classList.add('active');
+  progressFill.style.width = '0%';
   statusEl.className = 'status typing';
   statusEl.textContent = `Typing ${text.length} characters...`;
 
   try {
-    // Get the active tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    // Inject and execute the typing script
+    // First inject the content script
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: simulateTyping,
-      args: [text, minDelay, maxDelay, addTypos]
+      files: ['content.js']
     });
 
-    statusEl.className = 'status success';
-    statusEl.textContent = 'Done! Text has been typed.';
+    // Then send the typing command
+    chrome.tabs.sendMessage(tab.id, {
+      action: 'start',
+      text,
+      minDelay,
+      maxDelay,
+      addTypos
+    });
+
   } catch (err) {
     statusEl.className = 'status error';
     statusEl.textContent = `Error: ${err.message}`;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Start Typing';
+    resetUI();
+  }
+}
+
+function resetUI() {
+  isTyping = false;
+  isPaused = false;
+  startBtn.style.display = 'block';
+  controlRow.style.display = 'none';
+  progressBar.classList.remove('active');
+  pauseBtn.textContent = '⏸️ Pause';
+  pauseBtn.className = 'warning';
+}
+
+// Listen for messages from content script
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === 'progress') {
+    const percent = Math.round((message.current / message.total) * 100);
+    progressFill.style.width = `${percent}%`;
+    statusEl.textContent = `Typing... ${message.current}/${message.total} (${percent}%)`;
+  } else if (message.type === 'complete') {
+    statusEl.className = 'status success';
+    statusEl.textContent = 'Done! Text has been typed.';
+    resetUI();
+  } else if (message.type === 'error') {
+    statusEl.className = 'status error';
+    statusEl.textContent = message.error;
+    resetUI();
+  } else if (message.type === 'stopped') {
+    resetUI();
   }
 });
 
-// This function runs in the context of the page
-function simulateTyping(text, minDelay, maxDelay, addTypos) {
-  return new Promise((resolve, reject) => {
-    const activeElement = document.activeElement;
-    
-    // Check if we have a valid input target
-    if (!activeElement || 
-        (activeElement.tagName !== 'INPUT' && 
-         activeElement.tagName !== 'TEXTAREA' && 
-         !activeElement.isContentEditable)) {
-      reject(new Error('No input field focused. Click on an input field first!'));
-      return;
+// Check if already typing when popup opens
+chrome.storage.local.get(['typingState'], (result) => {
+  if (result.typingState && result.typingState.isTyping) {
+    isTyping = true;
+    isPaused = result.typingState.isPaused;
+    startBtn.style.display = 'none';
+    controlRow.style.display = 'flex';
+    progressBar.classList.add('active');
+    if (isPaused) {
+      pauseBtn.textContent = '▶️ Resume';
+      pauseBtn.className = 'secondary';
+      statusEl.className = 'status paused';
+      statusEl.textContent = 'Paused. Click Resume to continue.';
+    } else {
+      statusEl.className = 'status typing';
+      statusEl.textContent = 'Typing in progress...';
     }
-
-    const isContentEditable = activeElement.isContentEditable;
-    let currentIndex = 0;
-    
-    // Common typo mappings (nearby keys)
-    const typoMap = {
-      'a': ['s', 'q', 'z'],
-      'b': ['v', 'n', 'g'],
-      'c': ['x', 'v', 'd'],
-      'd': ['s', 'f', 'e'],
-      'e': ['w', 'r', 'd'],
-      'f': ['d', 'g', 'r'],
-      'g': ['f', 'h', 't'],
-      'h': ['g', 'j', 'y'],
-      'i': ['u', 'o', 'k'],
-      'j': ['h', 'k', 'u'],
-      'k': ['j', 'l', 'i'],
-      'l': ['k', 'o', 'p'],
-      'm': ['n', 'j', 'k'],
-      'n': ['b', 'm', 'h'],
-      'o': ['i', 'p', 'l'],
-      'p': ['o', 'l'],
-      'q': ['w', 'a'],
-      'r': ['e', 't', 'f'],
-      's': ['a', 'd', 'w'],
-      't': ['r', 'y', 'g'],
-      'u': ['y', 'i', 'j'],
-      'v': ['c', 'b', 'f'],
-      'w': ['q', 'e', 's'],
-      'x': ['z', 'c', 's'],
-      'y': ['t', 'u', 'h'],
-      'z': ['a', 'x']
-    };
-
-    function getRandomDelay() {
-      // Add some variance - occasionally type faster or slower
-      const baseDelay = Math.random() * (maxDelay - minDelay) + minDelay;
-      
-      // 10% chance of a longer pause (thinking)
-      if (Math.random() < 0.1) {
-        return baseDelay * 3;
-      }
-      // 20% chance of faster typing (burst)
-      if (Math.random() < 0.2) {
-        return baseDelay * 0.5;
-      }
-      return baseDelay;
-    }
-
-    function makeTypo(char) {
-      const lower = char.toLowerCase();
-      if (typoMap[lower] && Math.random() < 0.03) { // 3% typo rate
-        const typoChar = typoMap[lower][Math.floor(Math.random() * typoMap[lower].length)];
-        return char === char.toUpperCase() ? typoChar.toUpperCase() : typoChar;
-      }
-      return null;
-    }
-
-    function typeChar(char) {
-      if (isContentEditable) {
-        // For contenteditable elements
-        document.execCommand('insertText', false, char);
-      } else {
-        // For input/textarea
-        const start = activeElement.selectionStart;
-        const end = activeElement.selectionEnd;
-        const value = activeElement.value;
-        activeElement.value = value.substring(0, start) + char + value.substring(end);
-        activeElement.selectionStart = activeElement.selectionEnd = start + 1;
-        
-        // Trigger input event
-        activeElement.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    }
-
-    function deleteChar() {
-      if (isContentEditable) {
-        document.execCommand('delete', false, null);
-      } else {
-        const start = activeElement.selectionStart;
-        if (start > 0) {
-          const value = activeElement.value;
-          activeElement.value = value.substring(0, start - 1) + value.substring(start);
-          activeElement.selectionStart = activeElement.selectionEnd = start - 1;
-          activeElement.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-      }
-    }
-
-    let typoToFix = false;
-
-    function typeNext() {
-      // If we made a typo, fix it first
-      if (typoToFix) {
-        deleteChar();
-        typoToFix = false;
-        setTimeout(typeNext, getRandomDelay());
-        return;
-      }
-
-      if (currentIndex >= text.length) {
-        resolve();
-        return;
-      }
-
-      const char = text[currentIndex];
-      
-      // Maybe make a typo
-      if (addTypos && char.match(/[a-zA-Z]/)) {
-        const typo = makeTypo(char);
-        if (typo) {
-          typeChar(typo);
-          typoToFix = true;
-          currentIndex++; // We'll type the correct char after deleting
-          currentIndex--; // But first go back
-          setTimeout(typeNext, getRandomDelay());
-          return;
-        }
-      }
-
-      typeChar(char);
-      currentIndex++;
-      
-      // Slightly longer pause after punctuation
-      let delay = getRandomDelay();
-      if (['.', '!', '?', ',', ';', ':'].includes(char)) {
-        delay *= 1.5;
-      }
-      // Longer pause after sentences
-      if (['.', '!', '?'].includes(char) && text[currentIndex] === ' ') {
-        delay *= 2;
-      }
-
-      setTimeout(typeNext, delay);
-    }
-
-    typeNext();
-  });
-}
+  }
+});
