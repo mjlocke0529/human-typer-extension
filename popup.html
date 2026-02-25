@@ -359,6 +359,25 @@
     .word-counter.limit {
       color: #ef4444;
     }
+    .upgrade-bar {
+      margin-top: 16px;
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #666;
+      border-top: 1px solid #333;
+    }
+    .upgrade-bar a {
+      color: #f59e0b;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 11px;
+    }
+    .upgrade-bar a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -461,6 +480,11 @@
   <p class="help">
     💡 Click on an input field first, then start typing. Works with keyboard shortcuts too!
   </p>
+
+  <div id="upgradeBar" class="upgrade-bar">
+    <span>Free plan · 90 word limit</span>
+    <a href="#" id="upgradeLink">Upgrade / Log in</a>
+  </div>
 
   <script src="popup.js"></script>
 </body>
