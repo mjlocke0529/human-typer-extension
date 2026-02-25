@@ -1,4 +1,8 @@
-// Open side panel when extension icon is clicked
+// Enable side panel to open when clicking extension icon
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
+  .catch((error) => console.error(error));
+
+// Also handle manual open
 chrome.action.onClicked.addListener(async (tab) => {
   await chrome.sidePanel.open({ tabId: tab.id });
 });
