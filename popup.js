@@ -71,6 +71,27 @@ clipboardBtn.addEventListener('click', async () => {
   }
 });
 
+// Sample texts for testing
+const sampleTexts = [
+  "The quick brown fox jumps over the lazy dog. This sentence contains every letter of the alphabet!",
+  "Hello! I'm testing out this amazing typing simulator. It types just like a real human would, complete with natural pauses and occasional typos.",
+  "Dear Sir or Madam, I am writing to inquire about the position advertised on your website. I believe my skills and experience make me an excellent candidate.",
+  "Just wanted to follow up on our conversation from yesterday. Let me know if you have any questions or need additional information.",
+  "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+  "This is a test of the Human Typer extension. Watch as each character appears one by one, simulating realistic human typing behavior.",
+  "Thank you for your interest in our product! We're excited to help you get started. Please don't hesitate to reach out if you need assistance.",
+  "Meeting notes: Discussed Q1 objectives, assigned action items to team leads, and scheduled follow-up for next Thursday at 2pm."
+];
+
+// Generate sample text button
+const generateBtn = document.getElementById('generateBtn');
+generateBtn.addEventListener('click', () => {
+  const randomText = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
+  textEl.value = randomText;
+  statusEl.className = 'status success';
+  statusEl.textContent = `✨ Generated sample text (${randomText.length} chars)`;
+});
+
 // Start button
 startBtn.addEventListener('click', () => startTyping());
 
