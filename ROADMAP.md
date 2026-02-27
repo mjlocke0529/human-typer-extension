@@ -32,6 +32,19 @@
 
 ## 🚧 Upcoming
 
+### Distribution (Priority - Revenue Focus)
+- [ ] **Chrome Web Store listing** — First step to monetization
+  - Create developer account ($5 one-time fee)
+  - Prepare store listing assets (screenshots, descriptions, promo images)
+  - Privacy policy page
+  - Submit for review
+  - *Prioritized: 2026-02-26 (Huddle with Jim)*
+
+- [ ] Landing page / marketing site
+  - Product showcase
+  - Pricing page
+  - Download/install CTA
+
 ### Payment Integration
 - [ ] **Stripe integration** - Real payment processing for Pro upgrade
   - Stripe Checkout or ExtensionPay
@@ -46,11 +59,9 @@
 - [ ] Support for special characters and emojis
 - [ ] Auto-detect input field and start typing
 
-### Distribution
-- [ ] Chrome Web Store listing
+### Other Platforms
 - [ ] Firefox add-on port
 - [ ] Edge add-on port
-- [ ] Landing page / marketing site
 
 ---
 
